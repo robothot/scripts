@@ -1,6 +1,6 @@
 #!/bin/bash
 sudo apt update -y
-sudo apt install wireguard -y
+sudo apt install wireguard iptables ip6tables ufw -y
 
 sudo cp ./bin/wstunnel /bin/wstunnel
 sudo chmod +x /bin/wstunnel
@@ -17,30 +17,24 @@ sudo cat /etc/wireguard/keys/private.key | wg pubkey | sudo tee /etc/wireguard/k
 
 # 创建配置信息
 
+# 执行 ip route list default 查看接口
+
+gateway="eth0"
+
+
 wg_config="
 [Interface]
 Address = 10.0.0.1/24, fd24:609a:6c18::1/64
 ListenPort = 51820
-Table = off
-PreUp = source /etc/wireguard/wstunnel.sh && pre_up %I
-PostUp = source /etc/wireguard/wstunnel.sh && post_up %i %I
-PostDown = source /etc/wireguard/wstunnel.sh && post_down %i %I
-SaveConfig = true
+PostUp = ufw route allow in on wg0 out on $
+PostUp = iptables -t nat -I POSTROUTING -o $gateway -j MASQUERADE
+PostUp = ip6tables -t nat -I POSTROUTING -o $gateway -j MASQUERADE
+PreDown = ufw route delete allow in on wg0 out on $gateway
+PreDown = iptables -t nat -D POSTROUTING -o $gateway -j MASQUERADE
+PreDown = ip6tables -t nat -D POSTROUTING -o $gateway -j MASQUERADE
 " 
 
 echo "$wg_config" | sudo tee /etc/wireguard/wg0.conf
-
-wstunnel_config="
-REMOTE_HOST=family.lif.ink
-REMOTE_PORT=51820
-UPDATE_HOSTS='/etc/hosts'
-"
-echo "$wg_config" | sudo tee /etc/wireguard/wg0.wstunnel
-
-# 创建 wstunnel 的配置文件
-echo "REMOTE_HOST=family.lif.ink" | sudo tee /etc/wireguard/wg0.wstunnel
-echo "REMOTE_PORT=51820" | sudo tee /etc/wireguard/wg0.wstunnel
-echo "UPDATE_HOSTS='/etc/hosts'"| sudo tee /etc/wireguard/wg0.wstunnel
 
 
 # 配置转发
