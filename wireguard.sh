@@ -1,6 +1,6 @@
 #!/bin/bash
 sudo apt update -y
-sudo apt install wireguard
+sudo apt install wireguard -y
 
 sudo cp ./bin/wstunnel /bin/wstunnel
 sudo chmod +x /bin/wstunnel
